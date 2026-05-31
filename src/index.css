@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #0c0d0e;
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(212, 255, 63, 0.05), transparent 40%),
+    radial-gradient(circle at 90% 100%, rgba(91, 157, 255, 0.045), transparent 45%);
+  background-attachment: fixed;
+  color: #f4f1ea;
+  font-family: "Archivo", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* faint diagonal hatch texture in the page background */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: repeating-linear-gradient(
+    45deg,
+    #f4f1ea 0,
+    #f4f1ea 1px,
+    transparent 1px,
+    transparent 9px
+  );
+  z-index: 0;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* number inputs: strip spinners, big and centered for thumbs */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.rise {
+  animation: rise 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes pulseDot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+.live-dot {
+  animation: pulseDot 1.6s ease-in-out infinite;
+}
+
+/* hide scrollbars on horizontal day strip */
+.no-bar::-webkit-scrollbar {
+  display: none;
+}
+.no-bar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
