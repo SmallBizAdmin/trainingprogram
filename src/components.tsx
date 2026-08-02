@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type {
   LoggedExercise,
   LoggedSet,
@@ -83,7 +84,10 @@ export function HistoryModal({
     [sessions, exerciseName, currentSessionId]
   );
 
-  return (
+  // Portal to <body>: the card this renders from has backdrop-blur, which
+  // makes it the containing block for fixed descendants — the overlay would
+  // pin to the card instead of the viewport.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
       onClick={onClose}
@@ -151,7 +155,8 @@ export function HistoryModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -177,7 +182,9 @@ export function ExercisePicker({
 }) {
   const [custom, setCustom] = useState("");
 
-  return (
+  // Portalled for the same reason as HistoryModal — keep fixed overlays
+  // anchored to the viewport regardless of where the picker is mounted.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
       onClick={onClose}
@@ -250,7 +257,8 @@ export function ExercisePicker({
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
