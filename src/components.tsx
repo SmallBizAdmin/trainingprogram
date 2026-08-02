@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   LoggedExercise,
   LoggedSet,
@@ -28,15 +28,43 @@ const catColor: Record<string, string> = {
 
 function fmtDate(iso: string) {
   const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-  });
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+
+// Auto-resizing textarea so notes grow with content instead of needing scroll
+function AutoTextarea({
+  value,
+  onChange,
+  className = "",
+  ...rest
+}: {
+  value: string;
+  onChange: (v: string) => void;
+} & Omit<
+  React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+  "value" | "onChange"
+>) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      rows={1}
+      className={className}
+      {...rest}
+    />
+  );
 }
 
 // ---------------------------------------------------------------------------
-// HISTORY MODAL — past performances of one exercise, grouped so you can spot
-// which machine you used and at what load each week.
+// HISTORY MODAL
 // ---------------------------------------------------------------------------
 
 export function HistoryModal({
@@ -87,10 +115,7 @@ export function HistoryModal({
           ) : (
             <ul className="space-y-3">
               {entries.map((e, i) => (
-                <li
-                  key={i}
-                  className="rounded-xl border border-line bg-panel2 p-3"
-                >
+                <li key={i} className="rounded-xl border border-line bg-panel2 p-3">
                   <div className="mb-2 flex items-baseline justify-between">
                     <span className="font-display text-sm uppercase tracking-wide text-chalk">
                       {fmtDate(e.date)}
@@ -102,26 +127,24 @@ export function HistoryModal({
                     )}
                   </div>
                   {e.machineVariation ? (
-                    <p className="mb-2 text-xs italic text-steel">
-                      {e.machineVariation}
-                    </p>
+                    <p className="mb-2 text-xs italic text-steel">{e.machineVariation}</p>
                   ) : (
-                    <p className="mb-2 text-xs italic text-muted/60">
-                      no machine label
-                    </p>
+                    <p className="mb-2 text-xs italic text-muted/60">no machine label</p>
                   )}
                   <div className="flex flex-wrap gap-1.5">
                     {e.sets.map((s, j) => (
-                      <span
-                        key={j}
-                        className="tnum rounded-md bg-ink px-2 py-1 font-mono text-xs text-muted"
-                      >
+                      <span key={j} className="tnum rounded-md bg-ink px-2 py-1 font-mono text-xs text-muted">
                         {s.weight ?? "–"}
                         <span className="text-muted/50">kg ×</span>
                         {s.reps ?? "–"}
                       </span>
                     ))}
                   </div>
+                  {e.notes.trim() && (
+                    <p className="mt-2 border-l-2 border-line pl-2 text-xs leading-snug text-muted">
+                      {e.notes}
+                    </p>
+                  )}
                 </li>
               ))}
             </ul>
@@ -133,8 +156,7 @@ export function HistoryModal({
 }
 
 // ---------------------------------------------------------------------------
-// EXERCISE PICKER — choose any exercise from the program library, or type a
-// custom one. Used for both "swap" and "add".
+// EXERCISE PICKER
 // ---------------------------------------------------------------------------
 
 export function ExercisePicker({
@@ -145,7 +167,12 @@ export function ExercisePicker({
 }: {
   program: Program;
   title: string;
-  onPick: (e: Pick<ProgramExercise, "name" | "targetReps" | "restSeconds" | "category"> & { programExerciseId: string | null }) => void;
+  onPick: (
+    e: Pick<ProgramExercise, "name" | "targetReps" | "restSeconds" | "category"> & {
+      programExerciseId: string | null;
+      targetSets: number;
+    }
+  ) => void;
   onClose: () => void;
 }) {
   const [custom, setCustom] = useState("");
@@ -160,13 +187,8 @@ export function ExercisePicker({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 flex items-center justify-between border-b border-line bg-panel px-4 py-3">
-          <h3 className="font-display text-lg uppercase tracking-wide text-chalk">
-            {title}
-          </h3>
-          <button
-            onClick={onClose}
-            className="rounded-full p-1.5 text-muted hover:bg-panel2 hover:text-chalk"
-          >
+          <h3 className="font-display text-lg uppercase tracking-wide text-chalk">{title}</h3>
+          <button onClick={onClose} className="rounded-full p-1.5 text-muted hover:bg-panel2 hover:text-chalk">
             <X />
           </button>
         </div>
@@ -188,6 +210,7 @@ export function ExercisePicker({
                   restSeconds: 60,
                   category: "other",
                   programExerciseId: null,
+                  targetSets: 3,
                 })
               }
               className="rounded-lg bg-acid px-3 py-2 text-sm font-semibold text-ink disabled:opacity-30"
@@ -198,9 +221,7 @@ export function ExercisePicker({
 
           {program.days.map((day) => (
             <div key={day.id} className="mb-4">
-              <p className="mb-1.5 font-display text-xs uppercase tracking-widest text-muted">
-                {day.name}
-              </p>
+              <p className="mb-1.5 font-display text-xs uppercase tracking-widest text-muted">{day.name}</p>
               <ul className="space-y-1">
                 {day.exercises.map((ex) => (
                   <li key={ex.id}>
@@ -212,15 +233,14 @@ export function ExercisePicker({
                           restSeconds: ex.restSeconds,
                           category: ex.category,
                           programExerciseId: ex.id,
+                          targetSets: ex.targetSets,
                         })
                       }
                       className="flex w-full items-center justify-between rounded-lg border border-line bg-panel2 px-3 py-2 text-left text-sm text-chalk hover:border-acid/50"
                     >
                       <span>{ex.name}</span>
-                      <span
-                        className={`font-mono text-xs ${catColor[ex.category]}`}
-                      >
-                        {ex.targetReps}
+                      <span className={`font-mono text-xs ${catColor[ex.category]}`}>
+                        {ex.targetSets}×{ex.targetReps}
                       </span>
                     </button>
                   </li>
@@ -235,8 +255,7 @@ export function ExercisePicker({
 }
 
 // ---------------------------------------------------------------------------
-// EXERCISE CARD — the workhorse. Sets grid, machine label, notes, history,
-// reorder, swap, remove.
+// EXERCISE CARD
 // ---------------------------------------------------------------------------
 
 export function ExerciseCard({
@@ -262,6 +281,30 @@ export function ExerciseCard({
 }) {
   const [showHistory, setShowHistory] = useState(false);
   const [showNote, setShowNote] = useState(false);
+  const [showProgramNote, setShowProgramNote] = useState(false);
+
+  // Local input string for set count, so typing "10" doesn't truncate to 1 mid-keystroke.
+  // Commits the value on blur or Enter.
+  const [setsInput, setSetsInput] = useState(String(ex.sets.length));
+  useEffect(() => setSetsInput(String(ex.sets.length)), [ex.sets.length]);
+
+  const commitSetCount = () => {
+    const t = Math.max(1, Math.min(20, Math.floor(Number(setsInput)) || 1));
+    if (t === ex.sets.length) {
+      setSetsInput(String(ex.sets.length));
+      return;
+    }
+    if (t > ex.sets.length) {
+      const last = ex.sets[ex.sets.length - 1];
+      const additions: LoggedSet[] = Array.from({ length: t - ex.sets.length }, () => ({
+        reps: null,
+        weight: last?.weight ?? null,
+      }));
+      onChange({ ...ex, sets: [...ex.sets, ...additions] });
+    } else {
+      onChange({ ...ex, sets: ex.sets.slice(0, t) });
+    }
+  };
 
   const setSet = (i: number, patch: Partial<LoggedSet>) => {
     const sets = ex.sets.map((s, j) => (j === i ? { ...s, ...patch } : s));
@@ -309,9 +352,42 @@ export function ExerciseCard({
               {ex.name}
             </h3>
           </div>
-          <p className="mt-0.5 text-xs text-muted">
-            target {ex.sets.length}×{ex.targetReps} · {ex.restSeconds}s rest
-          </p>
+          {/* Editable target line: tap sets-count or reps to change. */}
+          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted">
+            <span className="uppercase tracking-widest text-muted/70">target</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={setsInput}
+              onChange={(e) => setSetsInput(e.target.value)}
+              onBlur={commitSetCount}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              }}
+              className="tnum w-8 border-b border-line/40 bg-transparent text-center font-mono text-xs text-chalk focus:border-acid focus:outline-none"
+            />
+            <span>×</span>
+            <input
+              type="text"
+              value={ex.targetReps}
+              onChange={(e) => onChange({ ...ex, targetReps: e.target.value })}
+              className="w-14 border-b border-line/40 bg-transparent text-center font-mono text-xs text-chalk focus:border-acid focus:outline-none"
+            />
+            <span className="text-muted/60">·</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={ex.restSeconds}
+              onChange={(e) =>
+                onChange({
+                  ...ex,
+                  restSeconds: Math.max(0, Math.min(600, Number(e.target.value) || 0)),
+                })
+              }
+              className="tnum w-10 border-b border-line/40 bg-transparent text-center font-mono text-xs text-chalk focus:border-acid focus:outline-none"
+            />
+            <span className="text-muted/70">s rest</span>
+          </div>
         </div>
 
         <div className="flex shrink-0 gap-1">
@@ -339,20 +415,28 @@ export function ExerciseCard({
         </div>
       </div>
 
-      {/* persistent coaching note */}
-      {ex.programNote && (
-        <p className="border-b border-line bg-acid/5 px-3 py-2 text-xs leading-snug text-acid/90">
-          {ex.programNote}
-        </p>
+      {/* editable coaching note (programNote): persists to template on Save */}
+      {(ex.programNote || showProgramNote) ? (
+        <AutoTextarea
+          value={ex.programNote}
+          onChange={(v) => onChange({ ...ex, programNote: v })}
+          placeholder="Coaching note — saved to template on Save changes…"
+          className="block w-full resize-none border-b border-line bg-acid/5 px-3 py-2 text-xs leading-snug text-acid/90 placeholder:text-acid/30 focus:bg-acid/10 focus:outline-none"
+        />
+      ) : (
+        <button
+          onClick={() => setShowProgramNote(true)}
+          className="block w-full border-b border-line bg-acid/[0.02] px-3 py-1.5 text-left text-[10px] uppercase tracking-widest text-acid/40 hover:bg-acid/5 hover:text-acid/70"
+        >
+          + add coaching note
+        </button>
       )}
 
       <div className="p-3">
         {/* machine variation */}
         <input
           value={ex.machineVariation}
-          onChange={(e) =>
-            onChange({ ...ex, machineVariation: e.target.value })
-          }
+          onChange={(e) => onChange({ ...ex, machineVariation: e.target.value })}
           placeholder="Machine / setup label (e.g. Hammer Strength, cable stack A)…"
           className="mb-3 w-full rounded-lg border border-line bg-ink px-3 py-2 text-xs text-steel placeholder:text-muted/50 focus:border-steel focus:outline-none"
         />
@@ -366,21 +450,14 @@ export function ExerciseCard({
         </div>
         <div className="space-y-1.5">
           {ex.sets.map((s, i) => (
-            <div
-              key={i}
-              className="grid grid-cols-[2rem_1fr_1fr_2rem] items-center gap-2"
-            >
-              <span className="text-center font-mono text-sm text-muted">
-                {i + 1}
-              </span>
+            <div key={i} className="grid grid-cols-[2rem_1fr_1fr_2rem] items-center gap-2">
+              <span className="text-center font-mono text-sm text-muted">{i + 1}</span>
               <input
                 type="number"
                 inputMode="decimal"
                 value={s.weight ?? ""}
                 onChange={(e) =>
-                  setSet(i, {
-                    weight: e.target.value === "" ? null : Number(e.target.value),
-                  })
+                  setSet(i, { weight: e.target.value === "" ? null : Number(e.target.value) })
                 }
                 placeholder="–"
                 className="tnum w-full rounded-lg border border-line bg-ink py-2.5 text-center font-mono text-base text-chalk placeholder:text-muted/40 focus:border-acid focus:outline-none"
@@ -390,9 +467,7 @@ export function ExerciseCard({
                 inputMode="numeric"
                 value={s.reps ?? ""}
                 onChange={(e) =>
-                  setSet(i, {
-                    reps: e.target.value === "" ? null : Number(e.target.value),
-                  })
+                  setSet(i, { reps: e.target.value === "" ? null : Number(e.target.value) })
                 }
                 placeholder="–"
                 className="tnum w-full rounded-lg border border-line bg-ink py-2.5 text-center font-mono text-base text-chalk placeholder:text-muted/40 focus:border-acid focus:outline-none"
@@ -415,19 +490,18 @@ export function ExerciseCard({
           <Plus width={14} height={14} /> Add set
         </button>
 
-        {/* per-session note */}
+        {/* per-session note — never saved to template */}
         <button
           onClick={() => setShowNote((v) => !v)}
           className="mt-3 text-xs uppercase tracking-wide text-muted hover:text-chalk"
         >
-          {showNote || ex.notes ? "▾ note" : "+ note"}
+          {showNote || ex.notes ? "▾ session note" : "+ session note"}
         </button>
         {(showNote || ex.notes) && (
-          <textarea
+          <AutoTextarea
             value={ex.notes}
-            onChange={(e) => onChange({ ...ex, notes: e.target.value })}
-            placeholder="How it felt, tweaks for next time…"
-            rows={2}
+            onChange={(v) => onChange({ ...ex, notes: v })}
+            placeholder="How it felt today, tweaks for next time… (not saved to template)"
             className="mt-1.5 w-full resize-none rounded-lg border border-line bg-ink px-3 py-2 text-sm text-chalk placeholder:text-muted/50 focus:border-acid focus:outline-none"
           />
         )}
