@@ -64,6 +64,37 @@ const catDot: Record<string, string> = {
   legs: "bg-acid",
 };
 
+function dayTone(dayName: string): string {
+  const n = dayName.toLowerCase();
+  if (n.includes("push")) return catDot.push;
+  if (n.includes("pull") || n.includes("upper")) return catDot.pull;
+  return catDot.legs;
+}
+
+// Which program day comes next in the rotation. Looks at the most recent
+// session that belongs to a day in the current program and picks the one
+// after it (wrapping). Sessions from an older template are ignored, so a
+// program change starts you at day 1.
+function nextDayFor(state: AppState): { next: ProgramDay; last: Session | null } {
+  const days = state.program.days;
+  const last =
+    [...state.sessions]
+      .sort((a, b) => (b.startTime ?? b.date).localeCompare(a.startTime ?? a.date))
+      .find((s) => days.some((d) => d.id === s.dayId)) ?? null;
+  if (!last) return { next: days[0], last: null };
+  const i = days.findIndex((d) => d.id === last.dayId);
+  return { next: days[(i + 1) % days.length], last };
+}
+
+function daysAgoLabel(isoDate: string): string {
+  const then = new Date(isoDate + "T00:00:00").getTime();
+  const today = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00").getTime();
+  const d = Math.round((today - then) / 86400000);
+  if (d <= 0) return "today";
+  if (d === 1) return "yesterday";
+  return `${d} days ago`;
+}
+
 export default function App() {
   const [state, setState] = useState<AppState>(() => loadLocal());
   const [picker, setPicker] = useState<
@@ -353,6 +384,11 @@ function HomeView({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const recent = state.sessions;
+  const { next, last } = useMemo(() => nextDayFor(state), [state]);
+  const live = useMemo(
+    () => state.sessions.find((s) => !!s.startTime && !s.endTime) ?? null,
+    [state.sessions]
+  );
 
   return (
     <div className="rise">
@@ -401,23 +437,81 @@ function HomeView({
         </div>
       </header>
 
-      <p className="mb-2 font-display text-xs uppercase tracking-widest text-muted">Start a session</p>
-      <div className="mb-8 grid grid-cols-2 gap-3">
-        {state.program.days.map((day) => (
+      {/* UP NEXT — the one card you should be tapping. If a session is still
+          live, resume it instead of starting the next one on top. */}
+      {live ? (
+        <button
+          onClick={() => onOpen(live.id)}
+          className="mb-6 w-full rounded-2xl border-2 border-acid bg-panel p-5 text-left"
+        >
+          <p className="flex items-center gap-2 font-display text-xs uppercase tracking-widest text-acid">
+            <span className="live-dot inline-block h-2 w-2 rounded-full bg-acid" />
+            Session in progress
+          </p>
+          <h2 className="mt-1 font-display text-4xl uppercase leading-none tracking-wide text-chalk">
+            {live.dayName}
+          </h2>
+          <p className="mt-2 text-sm text-muted">
+            Started {timeLabel(live.startTime)} · {durationLabel(live.startTime, null)} so far
+          </p>
+          <span className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-acid py-3.5 font-display text-lg uppercase tracking-wide text-ink">
+            Resume session
+          </span>
+        </button>
+      ) : (
+        <div className="mb-6 rounded-2xl border-2 border-acid bg-panel p-5">
+          <p className="font-display text-xs uppercase tracking-widest text-acid">Up next</p>
+          <h2 className="mt-1 font-display text-4xl uppercase leading-none tracking-wide text-chalk">
+            {next.name}
+          </h2>
+          <p className="mt-2 text-sm text-muted">{next.subtitle}</p>
+          <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted/70">
+            {next.exercises.length} exercises
+            {last && (
+              <>
+                {" · last: "}{last.dayName} {daysAgoLabel(last.date)}
+              </>
+            )}
+          </p>
           <button
-            key={day.id}
-            onClick={() => onStart(day)}
-            className="group rounded-2xl border border-line bg-panel p-4 text-left transition hover:border-acid/60"
+            onClick={() => onStart(next)}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-acid py-3.5 font-display text-lg uppercase tracking-wide text-ink active:scale-[0.99]"
           >
-            <span className="font-display text-xl uppercase tracking-wide text-chalk group-hover:text-acid">
-              {day.name}
-            </span>
-            <p className="mt-1 text-xs leading-snug text-muted">{day.subtitle}</p>
-            <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted/70">
-              {day.exercises.length} exercises
-            </p>
+            <Dumbbell width={20} height={20} /> Start {next.name}
           </button>
-        ))}
+        </div>
+      )}
+
+      <p className="mb-2 font-display text-xs uppercase tracking-widest text-muted">Or pick a different day</p>
+      <div className="mb-8 grid grid-cols-2 gap-3">
+        {state.program.days.map((day, i) => {
+          const isNext = !live && day.id === next.id;
+          return (
+            <button
+              key={day.id}
+              onClick={() => onStart(day)}
+              className={`group relative rounded-2xl border bg-panel p-4 text-left transition hover:border-acid/60 ${
+                isNext ? "border-acid/70" : "border-line"
+              }`}
+            >
+              {isNext && (
+                <span className="absolute right-3 top-3 rounded-full bg-acid px-2 py-0.5 font-display text-[10px] uppercase tracking-widest text-ink">
+                  next
+                </span>
+              )}
+              <span className="font-mono text-[10px] uppercase tracking-widest text-muted/70">
+                {i + 1} / {state.program.days.length}
+              </span>
+              <span className="block font-display text-xl uppercase tracking-wide text-chalk group-hover:text-acid">
+                {day.name}
+              </span>
+              <p className="mt-1 text-xs leading-snug text-muted">{day.subtitle}</p>
+              <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted/70">
+                {day.exercises.length} exercises
+              </p>
+            </button>
+          );
+        })}
       </div>
 
       <p className="mb-2 font-display text-xs uppercase tracking-widest text-muted">Recent sessions</p>
@@ -434,15 +528,7 @@ function HomeView({
             return (
               <li key={s.id} className="flex items-center gap-3 rounded-xl border border-line bg-panel p-3">
                 <button onClick={() => onOpen(s.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                  <span
-                    className={`h-8 w-1 shrink-0 rounded-full ${
-                      catDot[
-                        s.dayName.toLowerCase().includes("push") ? "push"
-                          : s.dayName.toLowerCase().includes("pull") ? "pull"
-                          : "legs"
-                      ] ?? "bg-muted"
-                    }`}
-                  />
+                  <span className={`h-8 w-1 shrink-0 rounded-full ${dayTone(s.dayName)}`} />
                   <div className="min-w-0">
                     <p className="font-display text-base uppercase tracking-wide text-chalk">{s.dayName}</p>
                     <p className="text-xs text-muted">

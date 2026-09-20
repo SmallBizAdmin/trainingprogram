@@ -25,6 +25,7 @@ export interface ProgramDay {
 }
 
 export interface Program {
+  version?: number; // bumped in program.ts when the seed template changes
   title: string;
   days: ProgramDay[];
 }

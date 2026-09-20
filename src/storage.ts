@@ -1,5 +1,5 @@
 import type { AppState, Session } from "./types";
-import { SEED_PROGRAM } from "./program";
+import { SEED_PROGRAM, PROGRAM_VERSION } from "./program";
 import { supabase, SUPABASE_ENABLED, SYNC_ID } from "./supabase";
 
 const KEY = "liftlog.v1";
@@ -11,7 +11,17 @@ function freshState(): AppState {
   return { program: structuredClone(SEED_PROGRAM), sessions: [], activeSessionId: null };
 }
 
-export function loadLocal(): AppState {
+// If the saved program predates the current seed, swap in the new template.
+// Sessions are untouched — exercise history is matched by name, so anything
+// with the same name carries its weights forward.
+export function migrateProgram(state: AppState): AppState {
+  const v = state.program?.version ?? 1;
+  if (v >= PROGRAM_VERSION) return state;
+  return { ...state, program: structuredClone(SEED_PROGRAM) };
+}
+
+// Raw local read — no migration, so reconcile can compare timestamps fairly.
+function loadLocalRaw(): AppState {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return freshState();
@@ -19,6 +29,10 @@ export function loadLocal(): AppState {
     if (!parsed.program || !Array.isArray(parsed.sessions)) return freshState();
     return parsed;
   } catch { return freshState(); }
+}
+
+export function loadLocal(): AppState {
+  return migrateProgram(loadLocalRaw());
 }
 
 export function saveLocal(state: AppState): AppState {
@@ -44,17 +58,19 @@ async function upsertRemote(state: AppState): Promise<void> {
 }
 
 export async function reconcileOnLoad(): Promise<AppState> {
-  const local = loadLocal();
-  if (!SUPABASE_ENABLED) return local;
+  const local = loadLocalRaw();
+  if (!SUPABASE_ENABLED) return migrateProgram(local);
   const remote = await fetchRemote();
-  if (!remote) return local;
+  if (!remote) return migrateProgram(local);
   const lt = Date.parse(local.updatedAt ?? "") || 0;
   const rt = Date.parse(remote.updatedAt ?? "") || 0;
+  // Pick the newer copy on its original timestamp, THEN migrate, so a
+  // template upgrade on this device never out-ranks sessions logged elsewhere.
+  const winner = migrateProgram(rt > lt ? remote : local);
   if (rt > lt) {
-    try { localStorage.setItem(KEY, JSON.stringify(remote)); } catch { /* ignore */ }
-    return remote;
+    try { localStorage.setItem(KEY, JSON.stringify(winner)); } catch { /* ignore */ }
   }
-  return local;
+  return winner;
 }
 
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -73,7 +89,7 @@ export function exportJSON(state: AppState): string { return JSON.stringify(stat
 export function importJSON(text: string): AppState {
   const parsed = JSON.parse(text) as AppState;
   if (!parsed.program || !Array.isArray(parsed.sessions)) throw new Error("File doesn't look like a LiftLog backup.");
-  return parsed;
+  return migrateProgram(parsed);
 }
 
 export interface HistoryEntry {
