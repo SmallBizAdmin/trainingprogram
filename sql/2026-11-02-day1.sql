@@ -1,12 +1,23 @@
--- LiftLog: insert Day 1 session (2026-11-02) into the synced state blob.
--- Run in Supabase → SQL Editor. Prepends the session (app lists newest first)
--- and bumps state.updatedAt so the phone pulls the remote copy on next open.
---
--- Adjust before running if needed:
---   * Targets the most recently synced row (the sync id is set in Vercel, not 'me').
---   * startTime/endTime are a guess (09:00–09:35 UTC, ~35 min). Edit to taste.
---   * French press: logged as 10 kg plate weight; the EZ bar itself isn't counted.
+-- LiftLog: put the 2026-11-02 Day 1 session into the synced state.
+-- Works whether or not the app_state row exists yet, and won't insert the
+-- session twice. Run the whole file in Supabase → SQL Editor, then
+-- force-quit and reopen LiftLog on the phone.
 
+-- 1. Make sure the row exists. The placeholder program is replaced by the
+--    app's seed template on load (version 0 < current).
+insert into app_state (id, state, updated_at)
+values (
+  'me',
+  jsonb_build_object(
+    'program', '{"version":0,"title":"","days":[]}'::jsonb,
+    'sessions', '[]'::jsonb,
+    'activeSessionId', null
+  ),
+  now()
+)
+on conflict (id) do nothing;
+
+-- 2. Prepend Day 1 (app lists newest first) and bump the sync timestamp.
 update app_state
 set
   state = jsonb_set(
@@ -125,13 +136,16 @@ $session$::jsonb) || coalesce(state->'sessions', '[]'::jsonb)
     to_jsonb(to_char(now() at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
   ),
   updated_at = now()
-where id = (select id from app_state order by updated_at desc nulls last limit 1);
+where id = 'me'
+  and not coalesce(state->'sessions', '[]'::jsonb) @> '[{"id":"sess-20261102-day1"}]'::jsonb;
 
--- Sanity check: newest session should be Day 1 on 2026-11-02 with 6 exercises.
+-- 3. Sanity check: expect Day 1 / 2026-11-02 / 6 exercises.
 select
+  id,
   state->'sessions'->0->>'dayName' as day,
   state->'sessions'->0->>'date'    as date,
   jsonb_array_length(state->'sessions'->0->'exercises') as exercises,
+  jsonb_array_length(state->'sessions') as total_sessions,
   state->>'updatedAt' as updated_at
 from app_state
-where id = (select id from app_state order by updated_at desc nulls last limit 1);
+where id = 'me';
