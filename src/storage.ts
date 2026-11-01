@@ -50,12 +50,25 @@ async function fetchRemote(): Promise<AppState | null> {
 
 async function upsertRemote(state: AppState): Promise<void> {
   if (!supabase) return;
+  // Same rule on the way up: a copy with no sessions never overwrites a
+  // remote that has some. Covers the fresh-browser case where the initial
+  // fetch failed (bad wifi) and the app fell back to its empty local state.
+  if (!hasSessions(state)) {
+    const remote = await fetchRemote();
+    if (hasSessions(remote)) {
+      console.warn("remote save skipped: local has no sessions but remote does");
+      return;
+    }
+  }
   const { error } = await supabase.from(TABLE).upsert(
     { id: SYNC_ID, state, updated_at: new Date().toISOString() },
     { onConflict: "id" }
   );
   if (error) console.warn("remote save failed", error.message);
 }
+
+const hasSessions = (s: AppState | null | undefined): boolean =>
+  !!s && Array.isArray(s.sessions) && s.sessions.length > 0;
 
 export async function reconcileOnLoad(): Promise<AppState> {
   const local = loadLocalRaw();
@@ -64,10 +77,16 @@ export async function reconcileOnLoad(): Promise<AppState> {
   if (!remote) return migrateProgram(local);
   const lt = Date.parse(local.updatedAt ?? "") || 0;
   const rt = Date.parse(remote.updatedAt ?? "") || 0;
-  // Pick the newer copy on its original timestamp, THEN migrate, so a
-  // template upgrade on this device never out-ranks sessions logged elsewhere.
-  const winner = migrateProgram(rt > lt ? remote : local);
-  if (rt > lt) {
+  // Newer copy wins on its original timestamp — EXCEPT that an empty copy
+  // never beats one with logged sessions, whatever the clocks say. A fresh
+  // browser (Safari tab, new phone, dev machine) must not wipe the history.
+  let useRemote = rt > lt;
+  if (hasSessions(local) && !hasSessions(remote)) useRemote = false;
+  else if (!hasSessions(local) && hasSessions(remote)) useRemote = true;
+  // Migrate AFTER choosing, so a template upgrade on this device never
+  // out-ranks sessions logged elsewhere.
+  const winner = migrateProgram(useRemote ? remote : local);
+  if (useRemote) {
     try { localStorage.setItem(KEY, JSON.stringify(winner)); } catch { /* ignore */ }
   }
   return winner;
