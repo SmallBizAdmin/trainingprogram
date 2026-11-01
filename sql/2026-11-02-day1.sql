@@ -3,7 +3,7 @@
 -- and bumps state.updatedAt so the phone pulls the remote copy on next open.
 --
 -- Adjust before running if needed:
---   * id = 'me' — change if you set VITE_SYNC_ID.
+--   * Targets the most recently synced row (the sync id is set in Vercel, not 'me').
 --   * startTime/endTime are a guess (09:00–09:35 UTC, ~35 min). Edit to taste.
 --   * French press: logged as 10 kg plate weight; the EZ bar itself isn't counted.
 
@@ -125,7 +125,7 @@ $session$::jsonb) || coalesce(state->'sessions', '[]'::jsonb)
     to_jsonb(to_char(now() at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
   ),
   updated_at = now()
-where id = 'me';
+where id = (select id from app_state order by updated_at desc nulls last limit 1);
 
 -- Sanity check: newest session should be Day 1 on 2026-11-02 with 6 exercises.
 select
@@ -134,4 +134,4 @@ select
   jsonb_array_length(state->'sessions'->0->'exercises') as exercises,
   state->>'updatedAt' as updated_at
 from app_state
-where id = 'me';
+where id = (select id from app_state order by updated_at desc nulls last limit 1);
