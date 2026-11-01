@@ -15,6 +15,7 @@ export interface ProgramExercise {
   restSeconds: number;
   notes: string; // persistent coaching note shown every session
   category: ExerciseCategory;
+  optional?: boolean; // finisher — do it if time allows, skipping isn't a miss
 }
 
 export interface ProgramDay {
@@ -27,6 +28,7 @@ export interface ProgramDay {
 export interface Program {
   version?: number; // bumped in program.ts when the seed template changes
   title: string;
+  description?: string; // how to run it: rotation, progression, rest guidance
   days: ProgramDay[];
 }
 
@@ -48,6 +50,7 @@ export interface LoggedExercise {
   programNote: string; // snapshot of the persistent coaching note
   targetReps: string; // snapshot of target for reference
   restSeconds: number;
+  optional?: boolean; // snapshot of the template flag
   sets: LoggedSet[];
 }
 

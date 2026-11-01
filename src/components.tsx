@@ -173,7 +173,7 @@ export function ExercisePicker({
   program: Program;
   title: string;
   onPick: (
-    e: Pick<ProgramExercise, "name" | "targetReps" | "restSeconds" | "category"> & {
+    e: Pick<ProgramExercise, "name" | "targetReps" | "restSeconds" | "category" | "optional"> & {
       programExerciseId: string | null;
       targetSets: number;
     }
@@ -241,11 +241,19 @@ export function ExercisePicker({
                           category: ex.category,
                           programExerciseId: ex.id,
                           targetSets: ex.targetSets,
+                          optional: ex.optional,
                         })
                       }
                       className="flex w-full items-center justify-between rounded-lg border border-line bg-panel2 px-3 py-2 text-left text-sm text-chalk hover:border-acid/50"
                     >
-                      <span>{ex.name}</span>
+                      <span>
+                        {ex.name}
+                        {ex.optional && (
+                          <span className="ml-2 rounded-full border border-line px-1.5 py-px font-mono text-[9px] uppercase tracking-widest text-muted">
+                            optional
+                          </span>
+                        )}
+                      </span>
                       <span className={`font-mono text-xs ${catColor[ex.category]}`}>
                         {ex.targetSets}×{ex.targetReps}
                       </span>
@@ -331,7 +339,11 @@ export function ExerciseCard({
   const accent = catColor[ex.category] ?? "text-muted";
 
   return (
-    <div className="rounded-2xl border border-line bg-panel/80 backdrop-blur-sm">
+    <div
+      className={`rounded-2xl border bg-panel/80 backdrop-blur-sm ${
+        ex.optional ? "border-dashed border-line/70" : "border-line"
+      }`}
+    >
       {/* header */}
       <div className="flex items-start gap-2 border-b border-line p-3">
         <div className="flex flex-col gap-0.5 pt-0.5">
@@ -362,6 +374,11 @@ export function ExerciseCard({
           </div>
           {/* Editable target line: tap sets-count or reps to change. */}
           <div className="mt-1 flex items-center gap-1.5 text-xs text-muted">
+            {ex.optional && (
+              <span className="rounded-full border border-line px-1.5 py-px font-mono text-[9px] uppercase tracking-widest text-muted">
+                optional
+              </span>
+            )}
             <span className="uppercase tracking-widest text-muted/70">target</span>
             <input
               type="number"

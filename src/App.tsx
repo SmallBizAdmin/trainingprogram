@@ -30,6 +30,7 @@ function sessionFromDay(day: ProgramDay): Session {
     programNote: ex.notes,
     targetReps: ex.targetReps,
     restSeconds: ex.restSeconds,
+    optional: ex.optional,
     sets: Array.from({ length: ex.targetSets }, () => ({ reps: null, weight: null })),
   }));
   return {
@@ -207,6 +208,7 @@ export default function App() {
           restSeconds: ex.restSeconds,
           notes: ex.programNote,
           category: ex.category,
+          optional: ex.optional,
         };
       });
 
@@ -334,6 +336,7 @@ export default function App() {
               programNote: programEx?.notes ?? "",
               targetReps: p.targetReps,
               restSeconds: p.restSeconds,
+              optional: p.optional,
               sets: Array.from({ length: startingSets }, () => ({
                 reps: null,
                 weight: null,
@@ -401,6 +404,9 @@ function HomeView({
             </h1>
           </div>
           <p className="mt-0.5 text-xs uppercase tracking-widest text-muted">{state.program.title}</p>
+          {state.program.description && (
+            <p className="mt-1 max-w-xs text-[11px] leading-snug text-muted/80">{state.program.description}</p>
+          )}
           <p className="mt-1 flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
             <span
               className={`inline-block h-1.5 w-1.5 rounded-full ${
