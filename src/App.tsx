@@ -76,12 +76,14 @@ function dayTone(dayName: string): string {
 // session that belongs to a day in the current program and picks the one
 // after it (wrapping). Sessions from an older template are ignored, so a
 // program change starts you at day 1.
+//
+// "Most recent" is list order — the app prepends every new session, and
+// that's the order the Recent list shows — not start time. A session
+// inserted by hand with a guessed timestamp must not out-rank one you
+// actually just did.
 function nextDayFor(state: AppState): { next: ProgramDay; last: Session | null } {
   const days = state.program.days;
-  const last =
-    [...state.sessions]
-      .sort((a, b) => (b.startTime ?? b.date).localeCompare(a.startTime ?? a.date))
-      .find((s) => days.some((d) => d.id === s.dayId)) ?? null;
+  const last = state.sessions.find((s) => days.some((d) => d.id === s.dayId)) ?? null;
   if (!last) return { next: days[0], last: null };
   const i = days.findIndex((d) => d.id === last.dayId);
   return { next: days[(i + 1) % days.length], last };
