@@ -348,12 +348,21 @@ export default function App() {
             if (picker.mode === "add") {
               patchActive((s) => ({ ...s, exercises: [...s.exercises, newEx] }));
             } else {
+              // Swap: the slot keeps its own targets. Sets (and anything
+              // already logged in them), target reps, rest and the machine
+              // label all stay; only the exercise identity changes.
               const i = picker.exIndex;
               patchActive((s) => ({
                 ...s,
                 exercises: s.exercises.map((e, j) =>
                   j === i
-                    ? { ...newEx, sets: e.sets, machineVariation: e.machineVariation }
+                    ? {
+                        ...newEx,
+                        sets: e.sets,
+                        targetReps: e.targetReps,
+                        restSeconds: e.restSeconds,
+                        machineVariation: e.machineVariation,
+                      }
                     : e
                 ),
               }));
