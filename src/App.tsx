@@ -361,6 +361,8 @@ export default function App() {
                         sets: e.sets,
                         targetReps: e.targetReps,
                         restSeconds: e.restSeconds,
+                        // An optional slot stays optional whatever goes in it.
+                        optional: e.optional ?? newEx.optional,
                         machineVariation: e.machineVariation,
                       }
                     : e

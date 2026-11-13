@@ -17,13 +17,16 @@ import type { Program } from "./types";
 //
 // Rest: 90s first lift, 60s the rest, 45s legs/abs, 0s inside a superset.
 //
+// Gym constraints (v5): no Smith machine for pressing (fine for squats), no
+// hyper / reverse hyper, no decline bench. Don't program around those.
+//
 // Exercise names reuse existing records where they exist (history is matched
 // by name, case-insensitive), so logged weights carry over.
 //
 // Bump PROGRAM_VERSION whenever the template changes so saved state picks up
 // the new program (sessions are kept, only the template is replaced).
 
-export const PROGRAM_VERSION = 4;
+export const PROGRAM_VERSION = 5;
 
 let _id = 0;
 const id = (p: string) => `${p}-${_id++}`;
@@ -62,11 +65,11 @@ export const SEED_PROGRAM: Program = {
         },
         {
           id: id("ex"),
-          name: "Incline Smith (individual handle)",
+          name: "Incline bench",
           targetSets: 4,
           targetReps: "8-10",
           restSeconds: REST,
-          notes: BO,
+          notes: `Barbell. ${BO}`,
           category: "push",
         },
         {
@@ -98,7 +101,7 @@ export const SEED_PROGRAM: Program = {
         },
         {
           id: id("ex"),
-          name: "Standing cable crunch",
+          name: "Kneeling cable crunch",
           targetSets: 2,
           targetReps: "15",
           restSeconds: LEG,
@@ -234,7 +237,7 @@ export const SEED_PROGRAM: Program = {
         {
           id: id("ex"),
           name: "Seated glute abductor (spreaders)",
-          targetSets: 3,
+          targetSets: 4,
           targetReps: "15",
           restSeconds: LEG,
           notes: PULSE,
@@ -242,11 +245,11 @@ export const SEED_PROGRAM: Program = {
         },
         {
           id: id("ex"),
-          name: "Glute hyper",
+          name: "Glute kickback",
           targetSets: 2,
           targetReps: "10",
           restSeconds: REST,
-          notes: "STOP at a straight body — don't arch past neutral. Squeeze the glutes, not the lower back.",
+          notes: "",
           category: "legs",
         },
         {
@@ -295,6 +298,15 @@ export const SEED_PROGRAM: Program = {
         },
         {
           id: id("ex"),
+          name: "Goblet squat",
+          targetSets: 3,
+          targetReps: "10",
+          restSeconds: LEG,
+          notes: "Kettlebell.",
+          category: "legs",
+        },
+        {
+          id: id("ex"),
           name: "Leg extension",
           targetSets: 2,
           targetReps: "12-15",
@@ -304,16 +316,7 @@ export const SEED_PROGRAM: Program = {
         },
         {
           id: id("ex"),
-          name: "Goblet squat",
-          targetSets: 2,
-          targetReps: "10",
-          restSeconds: LEG,
-          notes: "Kettlebell.",
-          category: "legs",
-        },
-        {
-          id: id("ex"),
-          name: "Standing cable crunch",
+          name: "Kneeling cable crunch",
           targetSets: 2,
           targetReps: "15",
           restSeconds: LEG,
@@ -330,6 +333,15 @@ export const SEED_PROGRAM: Program = {
           notes: `${CARRY} KB or DB locked out overhead, ribs down.`,
           category: "other",
           optional: true,
+        },
+        {
+          id: id("ex"),
+          name: "Medicine ball press",
+          targetSets: 1,
+          targetReps: "100",
+          restSeconds: 0,
+          notes: "One set of 100 to finish.",
+          category: "push",
         },
       ],
     },
@@ -382,16 +394,6 @@ export const SEED_PROGRAM: Program = {
           restSeconds: LEG,
           notes: "",
           category: "legs",
-        },
-        {
-          id: id("ex"),
-          name: "Ab wheel rollout",
-          targetSets: 2,
-          targetReps: "8-12",
-          restSeconds: LEG,
-          notes: OPT,
-          category: "core",
-          optional: true,
         },
         {
           id: id("ex"),
@@ -457,16 +459,16 @@ export const SEED_PROGRAM: Program = {
         },
         {
           id: id("ex"),
-          name: "Standing cable abductor",
-          targetSets: 2,
-          targetReps: "15/side",
-          restSeconds: LEG,
-          notes: PULSE,
+          name: "Cable pull-through",
+          targetSets: 3,
+          targetReps: "12-15",
+          restSeconds: REST,
+          notes: "Rope between the legs, walk out, hinge back and let it stretch, squeeze the glutes at lockout. A hinge, not a squat.",
           category: "legs",
         },
         {
           id: id("ex"),
-          name: "Weighted decline crunch",
+          name: "Lying leg raise",
           targetSets: 2,
           targetReps: "12-15",
           restSeconds: LEG,
